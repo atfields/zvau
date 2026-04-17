@@ -23,7 +23,7 @@
 #' @examples 
 #' 
 #' library(sp)
-#' library(rgeos)
+#' library(rgeos)  -> depricated; gBuffer function pulled into this repo
 #' library(dismo)
 #' library(raster)
 #' library(rgdal)
@@ -46,6 +46,85 @@
 #' my.map <- gmap(extent(x), zoom = 4, scale = 2)
 #' plotCircleOnMap(coords = x, multiply.r = c(100, 50), multiply.se = c(10, 20), 
 #'                 map = my.map, var = c("Ar"), lty = c("solid", "dashed"))
+
+gBuffer = function(spgeom, byid=FALSE, id=NULL, width=1.0, quadsegs=5, 
+                     capStyle="ROUND", joinStyle="ROUND", mitreLimit=1.0) {
+
+  .Deprecated("", package="rgeos", msg="GEOS support is provided by the sf and terra packages among others")
+    stopifnot(is.logical(byid))
+    if (!is.na(is.projected(spgeom)) && !is.projected(spgeom))
+     warning("Spatial object is not projected; GEOS expects planar coordinates")
+# Josh O'Brien 2016-02-08
+    byid_status <- byid
+    if (byid && length(spgeom) == 1) {
+        id <- row.names(spgeom)[1]
+        byid <- FALSE
+        byid_status <- TRUE
+        #message("byid set to FALSE; single feature detected")
+    }
+    GEOSCapStyles = c("ROUND","FLAT","SQUARE")
+    GEOSJoinStyles = c("ROUND","MITRE","BEVEL")
+
+    
+    curids = unique(row.names(spgeom))
+    if (is.null(id)) {
+        if (byid)   id = curids
+        else        id = "buffer"
+    }
+    
+    if (byid == TRUE  && length(id) != length(curids) )
+        stop("if applying by ids, new ids must be same length as current ids")
+    if (byid == FALSE && length(id) != 1 ) 
+        stop("if applying across ids, new id must be length 1")
+    
+    id = as.character(id)
+    width = as.numeric(width)
+    n <- length(curids)
+    if (byid) {
+        if (length(width) == 1) width <- rep(width, n)
+        stopifnot(length(width) == n)
+    } else {
+        stopifnot(length(width) == 1)
+    }
+    quadsegs = as.integer(quadsegs)
+    byid = as.logical(byid)
+    mitreLimit=as.numeric(mitreLimit)
+    
+    if (is.character(capStyle)) 
+        capStyle = which(match.arg(toupper(capStyle),GEOSCapStyles) == GEOSCapStyles)
+    if (is.character(joinStyle)) 
+        joinStyle = which(match.arg(toupper(joinStyle),GEOSJoinStyles) == GEOSJoinStyles)
+    
+    if ( !(capStyle %in% 1:length(GEOSCapStyles)) ) stop("invalid cap style")
+    if ( !(joinStyle %in% 1:length(GEOSJoinStyles)) ) stop("invalid join style")
+    
+    capStyle= as.integer(capStyle)
+    joinStyle= as.integer(joinStyle)
+    
+    if (mitreLimit <= 0) 
+        stop("mitreLimit must be greater than 0")
+    if (capStyle == 2 && inherits(spgeom,"SpatialPoints")) 
+        stop("Flat capstyle is incompatible with SpatialPoints geometries")
+    if (any(width < 0) && !inherits(spgeom,"SpatialPolygons")) 
+        stop("Negative width values may only be used with SpatialPolygons geometries")
+
+    ans = .Call("rgeos_buffer", .RGEOS_HANDLE, spgeom, byid, id, width, quadsegs,
+                                capStyle, joinStyle, mitreLimit, PACKAGE="rgeos")
+ 
+	if (!is.null(ans) && byid_status) {
+	    if (.hasSlot(spgeom, 'data')) {
+                m1 <- match(row.names(ans), id)
+                df1 <- spgeom@data[m1, , drop=FALSE]
+                row.names(df1) <- id[m1]
+	        ans <- SpatialPolygonsDataFrame(ans, df1)
+		}	
+	}
+ 
+    return(ans)
+}
+### Taken straight from rgeos v0.6-4 ###
+### Authors:Roger Bivand [cre, aut] (<https://orcid.org/0000-0003-2392-6140>), Colin Rundel [aut], Edzer Pebesma [ctb], Rainer Stuetz [ctb], Karl Ove Hufthammer [ctb], 
+###         Patrick Giraudoux [ctb], Martin Davis [cph, ctb], Sandro Santilli [cph, ctb] ###
 
 plotCircleOnMap <- function(coords, multiply.r = rep(1, length(var)), multiply.se = rep(1, length(var)), 
                             map, var, lty = rep("solid", length(var)), plot.se = FALSE) {
