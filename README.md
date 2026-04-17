@@ -28,7 +28,9 @@ To install the package using
 
 ```r
 library(devtools)
-install_github("romunov/zvau")
+install_github("atfields/zvau")
+### This fork comes from https://github.com/romunov/zvau.git ###
+### At time of fork, repo had not been updated for 9 years ###
 ```
 
 you will need
