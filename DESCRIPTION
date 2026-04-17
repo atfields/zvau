@@ -13,7 +13,7 @@ Imports:
     magrittr,
     ggplot2,
     sp,
-    rgeos,
+    #rgeos,
     dismo,
     raster
 Suggests:
